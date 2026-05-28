@@ -9,7 +9,7 @@ import os, uuid, secrets, time, boto3
 
 app = FastAPI(title="AWS Cloud Foundations - Segunda Entrega")
 
-# ─── Config ───────────────────────────────────────────────────────────────────
+# Config
 DB_HOST        = os.getenv("DB_HOST", "localhost")
 DB_PORT        = os.getenv("DB_PORT", "3306")
 DB_NAME        = os.getenv("DB_NAME", "sicei")
@@ -20,7 +20,7 @@ AWS_REGION     = os.getenv("AWS_REGION", "us-east-1")
 SNS_TOPIC_ARN  = os.getenv("SNS_TOPIC_ARN", "")
 DYNAMODB_TABLE = os.getenv("DYNAMODB_TABLE", "sesiones-alumnos")
 
-# ─── SQLAlchemy ───────────────────────────────────────────────────────────────
+# SQLAlchemy 
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine       = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine)
@@ -53,12 +53,12 @@ def get_db():
     finally:
         db.close()
 
-# ─── AWS clients ──────────────────────────────────────────────────────────────
+# AWS clients 
 def get_s3():       return boto3.client("s3",       region_name=AWS_REGION)
 def get_sns():      return boto3.client("sns",      region_name=AWS_REGION)
 def get_dynamodb(): return boto3.resource("dynamodb", region_name=AWS_REGION)
 
-# ─── Exception handlers ───────────────────────────────────────────────────────
+# Exception handlers 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = [{"campo": str(e["loc"][-1]), "mensaje": e["msg"]} for e in exc.errors()]
@@ -68,7 +68,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(status_code=500, content={"detail": str(exc)})
 
-# ─── Validadores ──────────────────────────────────────────────────────────────
+# Validadores 
 def validar_string(v: Any, campo: str, errs: list):
     if v is None or not isinstance(v, str) or not v.strip():
         errs.append(f"{campo} debe ser texto no vacío")
@@ -81,7 +81,7 @@ def validar_int_positivo(v: Any, campo: str, errs: list):
     elif v < 0:
         errs.append(f"{campo} debe ser >= 0")
 
-# ─── Modelos Pydantic ─────────────────────────────────────────────────────────
+# Modelos Pydantic 
 class AlumnoCreate(BaseModel):
     nombres:       str
     apellidos:     str
@@ -150,7 +150,7 @@ class ProfesorResponse(BaseModel):
     horasClase:     int
     model_config = ConfigDict(from_attributes=True)
 
-# ─── Alumnos ──────────────────────────────────────────────────────────────────
+# Alumnos
 @app.get("/alumnos", response_model=list[AlumnoResponse])
 def get_alumnos(db: Session = Depends(get_db)):
     return db.query(AlumnoDB).all()
@@ -193,7 +193,7 @@ def delete_alumno(id: int, db: Session = Depends(get_db)):
     db.delete(a); db.commit()
     return {"mensaje": f"Alumno {id} eliminado"}
 
-# ─── Foto perfil S3 ───────────────────────────────────────────────────────────
+# Foto perfil S3 
 @app.post("/alumnos/{id}/fotoPerfil")
 async def upload_foto(id: int, foto: UploadFile = File(...), db: Session = Depends(get_db)):
     a = db.query(AlumnoDB).filter(AlumnoDB.id == id).first()
@@ -209,7 +209,7 @@ async def upload_foto(id: int, foto: UploadFile = File(...), db: Session = Depen
     db.commit(); db.refresh(a)
     return {"fotoPerfilUrl": url}
 
-# ─── Email SNS ────────────────────────────────────────────────────────────────
+# Email SNS
 @app.post("/alumnos/{id}/email")
 def send_email(id: int, db: Session = Depends(get_db)):
     a = db.query(AlumnoDB).filter(AlumnoDB.id == id).first()
@@ -275,7 +275,7 @@ def logout(id: int, body: dict):
     )
     return {"mensaje": "Sesión cerrada"}
 
-# ─── Profesores ───────────────────────────────────────────────────────────────
+# Profesores
 @app.get("/profesores", response_model=list[ProfesorResponse])
 def get_profesores(db: Session = Depends(get_db)):
     return db.query(ProfesorDB).all()
